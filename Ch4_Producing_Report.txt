@@ -1,0 +1,194 @@
+proc sort data=orion.employee_payroll
+	out=work.sort_salary;
+   by Salary;
+run;
+
+proc print data=work.sort_salary;
+run;
+
+proc sort data=orion.employee_payroll
+	out=work.sort_sal;
+	by Employee_Gender descending Salary;
+run;
+
+proc print data=work.sort_sal noobs;
+	by Employee_Gender;
+	SUM Salary;
+	WHERE Employee_Term_Date IS MISSING & Salary > 65000;
+	VAR  Employee_ID Salary Marital_Status;
+run; 
+
+proc sort data=orion.orders
+	out=work.sort_ID nodupkey
+	dupout=work.duplicates;
+	by Customer_ID;
+run;
+
+proc print data=work.duplicates;
+run;
+
+proc print data=orion.customer_dim noobs;
+	WHERE Customer_Age between 30 and 40;
+	ID Customer_ID;
+	VAR Customer_Name Customer_Age Customer_Type;
+run; 
+
+TITLE1'Australian Sales Employees';
+TITLE2'Senior Sales Representatives';
+FOOTNOTE1'Job_Title: Sales Rep.IV';
+proc print data=orion.sales noobs;
+   where Country='AU' and 
+         Job_Title contains 'Rep. IV';
+         VAR Employee_ID First_Name Last_Name Gender Salary;
+run;
+
+title;
+footnote;
+
+title1 'The First Line';
+title2 'The Second Line';
+proc print data=orion.sales;
+run;
+
+title2 'The Next Line';
+proc print data=orion.sales;
+run;
+
+title 'The Top Line';
+proc print data=orion.sales;
+run;
+
+proc sort data=orion.staff
+          out=work.staff_sort;
+   by Gender Start_Date;
+run;
+
+proc print data=work.staff_sort label;
+   by Gender;
+   label Start_Date='Start';
+run;
+
+title 'Entry-level Sales Representatives';
+footnote 'Job_Title: Sales Rep. I';
+
+/*Displaying column headings in detailed report*/
+
+proc print data=orion.sales noobs split=' ';
+   where Country='US' and 
+         Job_Title='Sales Rep. I';
+   var Employee_ID First_Name Last_Name Gender Salary;
+   label Salary = 'Annual Salary'
+   		Employee_ID = 'Employee ID'
+   		First_Name = 'First Name'
+   		Last_Name = 'Last Name';
+run;
+
+title;
+footnote;
+
+/*Subsetting Your Report*/
+
+proc print data=orion.sales;
+   var Last_Name First_Name Salary;
+   sum Salary;
+run;
+
+/*Selecting Observations*/
+
+proc print data=orion.sales noobs;
+   var Last_Name First_Name Salary Country;
+   where Country='AU' and Salary<25500;
+run;
+
+/*Using the CONTAINS Operator*/
+
+proc print data=orion.sales noobs;
+   var Last_Name First_Name Country Job_Title;
+   where Country='AU' and Job_Title contains 'Rep';
+run;
+
+/*Subsetting Observations and Replacing the Obs Column*/
+
+proc print data=orion.customer_dim;
+   where Customer_Age=21;
+   id Customer_ID;
+   var Customer_Name
+       Customer_Gender Customer_Country
+       Customer_Group Customer_Age_Group
+       Customer_Type;
+run;
+
+/*Sorting a Data Set*/
+
+proc sort data=orion.sales
+          out=work.sales_sort;
+   by Salary;
+run;
+
+proc print data=work.sales_sort; 
+run;
+
+/*Sorting a Data Set by Multiple Variables*/
+
+proc sort data=orion.sales
+          out=work.sales2;
+   by Country descending Salary;
+run;
+
+proc print data=work.sales2;
+run;
+
+/*Grouping Observations in Reports*/
+
+proc sort data=orion.sales          
+          out=work.sales2;   
+   by Country descending Salary;
+run;
+
+proc print data=work.sales2;
+   by Country;
+run;
+
+/*Displaying Titles and Footnotes in a Report*/
+
+title1 'Orion Star Sales Staff';
+title2 'Salary Report';
+footnote1 'Confidential';
+
+proc print data=orion.sales;
+   var Employee_ID Last_Name Salary;
+run;
+
+proc print data=orion.sales; 
+   var Employee_ID First_Name Last_Name Job_Title Hire_Date; 
+run;
+
+/*Changing and Canceling Titles and Footnotes*/
+
+title1 'Orion Star Sales Staff';
+title2 'Salary Report';
+footnote1 'Confidential';
+
+proc print data=orion.sales;
+   var Employee_ID Last_Name Salary;
+run;
+
+title1 'Employee Information';
+proc print data=orion.sales;
+   var Employee_ID First_Name Last_Name Job_Title Hire_Date;
+run;
+
+/*Displaying Labels in a Report*/
+
+title1 'Orion Star Sales Staff';
+title2 'Salary Report';
+footnote1 'Confidential';
+
+proc print data=orion.sales label;
+   var Employee_ID Last_Name Salary;
+   label Employee_ID = 'Sales ID'
+         Last_Name = 'Last Name'
+         Salary = 'Annual Salary';
+run;
+title;
+footnote;
