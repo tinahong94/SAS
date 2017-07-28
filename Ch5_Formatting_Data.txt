@@ -1,0 +1,69 @@
+/*Add a FORMAT statement to display Salary in a dollar format
+Birth_Date in the 01/31/2012 date style, and Employee_Hire_Date 
+in the 01JAN2012 date style*/
+proc print data=orion.employee_payroll;
+	var Employee_ID Salary Birth_Date Employee_Hire_Date;
+	format Salary DOLLAR11.2 Birth_Date mmddyy10. Employee_Hire_Date date9.;
+run;
+
+/*Write a PROC PRINT step to display a report of the data set orion.sales*/
+Subset the observations and variables, and include titles, labels, 
+and formats*/
+title1"US Sales Employees";
+title2"Earning Under $26,000";
+proc print data=orion.sales noobs label;
+	var Employee_ID First_Name Last_Name Job_Title Salary Hire_Date;
+	where Country = 'AU' & Salary < 26000;
+	label First_Name='First Name' Last_Name='Last Name' 
+	Job_Title='Title' Hire_Date='Date_Hired';
+	format Salary DOLLAR7. Hire_Date MONYY7.;
+run;
+title;
+
+/* Investigate and use both the character format
+that displays values in uppercase and 
+the format that displays a character value in quotation marks.*/
+title1"The SAS System";
+proc print data=orion.sales noobs;
+	var Employee_ID First_Name Last_Name Job_Title;
+	format First_Name Last_Name $upcase.
+	Job_Title $quote.;
+run;
+
+/*Ceating user-defined formats*/
+data q1birthdays;
+   set orion.employee_payroll;
+   BirthMonth=month(Birth_Date);
+   if BirthMonth le 3;
+run;
+
+proc format; 
+	value $GENDER 'F'='Female' 'M'='Male';
+	value MNAME 1='January' 2='Feburary' 3='March';
+run;
+
+title1"Employees with Birthdays in Q1";
+proc print data=q1birthdays;
+	var Employee_ID Employee_Gender BirthMonth;
+	format Employee_Gender $Gender. BirthMonth MNAME.;
+run;
+title;
+
+/* Defining Ranges in User-Defined Formats*/
+proc format;
+	value $GENDER 'F'='Female' 'M'='Male' OTHER='Invalid code';
+	value SALRANGE 2000-<100000='Below $100,000'
+	100000-500000='$100,000 or more'
+	.='Missing salary'
+	other='Invalid salary';
+run;
+
+title1'Salary and Gender Values';
+title2'for Non_Sales Employees';
+
+proc print data=orion.nonsales;
+	var Employee_ID Job_Title Salary Gender;
+	format Gender $GENDER. Salary SALRANGE.;
+run;
+title;
+
