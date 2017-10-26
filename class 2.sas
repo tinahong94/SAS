@@ -1,0 +1,143 @@
+**********************************;
+** class 2 sas code;
+**********************************;
+options linesize=120 pagesize=55 spool mprint;
+%let indir=C:\Users\Tina_\Documents\Fall 2017 SMU\Mod B\MAST6251 Predictive Analytics\Lecture 1\Class 1;
+%let dsopt=compress=yes replace=yes reuse=yes;
+libname indta "&indir";
+*** get the cereal data;
+proc import file="&indir.\cereal_cost.xlsx"
+ DBMS=xlsx OUT=tmp REPLACE; sheet="sheet1";  
+run;
+ods graphics on;
+ods pdf file="&indir.\Graphs.pdf";
+*** create estimation and validation samples;
+data tmp(&dsopt);
+   set tmp;
+   seed=17;
+   t=ranuni(seed);
+   v_sample = (t<0.15); /* randomly sample 15% */ 
+   if t < 0.15 then v_sample=1;
+   			   else v_sample=0; /* truth is 1 false is 0*/
+   ln_sales = log(sales);  ** get log of sales;
+   drop t seed;  ** do not need these variables;
+run;
+** estimation sample;
+data estimation (&dsopt);
+   set tmp;
+   if v_sample<1 then output;
+run;
+** validation sample;
+data validation (&dsopt);
+   set tmp;
+   if v_sample>0 then output;
+run;
+PROC GLM DATA = estimation plots=diagnostics;
+class brand;
+	MODEL ln_sales = Price Ad_Dollars Ad_Frequency Other_price brand / solution ;
+	ods output ParameterEstimates=parms;
+	ods output FitStatistics=fit;
+	ods output overallanova=anova;
+	store work.Score; 
+RUN;
+ods pdf close;
+********;
+** scoring a dataset.  method 1;
+********;
+data parms1;
+   set parms end=last; /*what is the last record in that data set*/
+   retain b0 bprice bad baf bop;
+   if lowcase(parameter)="intercept" then b0=estimate;
+   if lowcase(parameter)="price" then bprice=estimate;
+   if lowcase(parameter)="ad_dollars" then bad=estimate;
+   if lowcase(parameter)="ad_frequency" then baf=estimate;
+   if lowcase(parameter)="other_price" then bop=estimate;
+   if last then output;
+   keep b0 bprice bad baf bop;
+run;
+data predict;
+   set validation;
+   retain b0 bprice bad baf bop;
+   if _n_ eq 1 then set parms1; /*to see if this is the first line of data set */
+   predict=b0+bprice*price+bad*ad_frequency+baf*ad_frequency+bop*other_price;
+run;
+***********;
+** scoring a dataset. method 2;
+***********;
+proc plm restore=work.Score; /* restore brings back the data that you store before */ 
+   score data=validation out=Pred;  /* evaluate the model on new data */
+run; 
+
+*************;
+** dummy variables;
+*************;
+title "dummy - method 1";
+PROC GLM DATA = estimation ;
+    class brand;
+	MODEL Sales = Price Ad_Dollars Ad_Frequency Other_price brand/ solution ; 
+RUN;
+title "dummy - method 2";
+data tmp1;
+   set estimation;
+   ** create dummy variables, lower or upper case does not matter;
+   cheerios = (brand = "CHEERIOS");
+   frosted = (Brand="FROSTED FLAKES");
+   plfrosted = (Brand="PL FROSTED FLAKES");
+   plrice = (Brand="PL RICE");
+run;
+PROC GLM DATA = tmp1 ;
+	MODEL Sales = Price Ad_Dollars Ad_Frequency Other_price cheerios frosted plfrosted plrice/ solution ; 
+RUN;
+*********;
+** calculating aic/bic/rmse;
+*********;
+proc glm data=estimation;
+		class brand;
+		model Sales = Price Ad_Dollars Ad_Frequency Other_Price brand/ solution ;
+		ods output ParameterEstimates=parms;
+		ods output FitStatistics=fit;
+		ods output overallanova=anova;
+run;
+*** get aic and bic;
+data aic;
+    set anova end=last; /* end=last tells you what is the last observation */ 
+	retain k n rootmse;
+	if _n_ eq 1 then set fit;  ** get root mse;
+	if lowcase(source)="model" then k=df;
+	if lowcase(source)="corrected total" then n=df+1;
+	if last then do;
+        aic = log(rootmse**2) + 2*k/n;
+		bic = log(rootmse**2) + k*log(n)/n;
+		output ;
+		keep aic bic k n rootmse;
+	end;
+run;
+******;
+** comparing samples;
+******;
+title "sample tests";
+proc glm data=tmp;
+   class v_sample;
+   model price  = v_sample /solution;
+   means v_sample /tukey;
+run;
+*************;
+** generating observations from means;
+*************;
+proc means data=tmp noprint;
+var price ad_dollars ad_frequency other_price;
+output out=procmeansoutput
+	mean(price ad_frequency ad_dollars other_price)=Price ad_frequency ad_dollars Other_Price
+	range(price ad_frequency ad_dollars other_price)=PriceRange AdFreqRange AdDollarsRange OtherBrandRange
+	min(price)=MinPrice min(ad_frequency)=MinAdFreq min(ad_dollars)=MinAdDollars min(other_price)=MinOB;
+run;
+*Generates 30 random points between min and max of other brand price;
+Data OtherBrandPoints;
+   Set procmeansoutput;
+   
+  Do i=1 to 30;
+      Other_Price = MinOB + (i-1)*(OtherBrandRange)/29;
+      Output;
+  End;
+keep Price Ad_Dollars Ad_Frequency Other_Price;
+Run;
